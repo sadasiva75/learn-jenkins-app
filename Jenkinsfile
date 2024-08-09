@@ -36,4 +36,9 @@ stage('Test') {
             }
 }
     }
+    post{
+        always{
+            junit 'test-reults/junit.xml'
+        }
+    }
 }
