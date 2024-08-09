@@ -38,7 +38,7 @@ stage('Test') {
     }
     post{
         always{
-            junit 'test-reults/junit.xml'
+            junit 'test-results/junit.xml'
         }
     }
 }
