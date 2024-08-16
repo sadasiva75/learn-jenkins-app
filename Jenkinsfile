@@ -94,6 +94,14 @@ pipeline {
             }
         }
 
+        stage('Approval')
+        {
+            timeout(time: 15, unit: 'MINUTES') 
+            {
+                input message: 'Do you wish to deploy to Production with prior approval?', ok: 'Yes! I am sure!'
+        }
+
+        }
         stage('Deploy PRODUCTION') {
             agent {
                 docker {
