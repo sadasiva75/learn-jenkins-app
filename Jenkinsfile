@@ -6,7 +6,7 @@ pipeline {
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
     }
 
-    stages {
+  stages {
 
         stage('Build') {
             agent {
@@ -69,14 +69,14 @@ pipeline {
 
                     post {
                         always {
-                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Playwright Local', reportTitles: '', useWrapperFileDirectly: true])
+                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Local E2E', reportTitles: '', useWrapperFileDirectly: true])
                         }
                     }
                 }
             }
         }
 
-        stage('Deploy Staging') {
+        stage('Deploy staging') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -87,17 +87,17 @@ pipeline {
                 sh '''
                     npm install netlify-cli node-jq
                     node_modules/.bin/netlify --version
-                    echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
+                    echo "Deploying to staging. Site ID: $NETLIFY_SITE_ID"
                     node_modules/.bin/netlify status
                     node_modules/.bin/netlify deploy --dir=build --json > deploy-output.json
-                    
                 '''
+                script {
+                    env.STAGING_URL = sh(script: "node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json", returnStdout: true)
+                }
             }
         }
-                script{
-                  env.STAGING_url = SH(script. "node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json", returnStdout: true)
-              }
-  stage('Staging E2E') {
+
+        stage('Staging E2E') {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
@@ -121,8 +121,8 @@ pipeline {
                 }
             }
         }
-    }
-           stage('Approval') {
+
+        stage('Approval') {
             steps {
                 timeout(time: 15, unit: 'MINUTES') {
                     input message: 'Do you wish to deploy to production?', ok: 'Yes, I am sure!'
@@ -130,7 +130,7 @@ pipeline {
             }
         }
 
-        stage('Deploy PRODUCTION') {
+        stage('Deploy prod') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -157,7 +157,7 @@ pipeline {
             }
 
             environment {
-                CI_ENVIRONMENT_URL = 'https://dreamy-otter-4dd3f5.netlify.app/'
+                CI_ENVIRONMENT_URL = 'YOUR NETLIFY URL'
             }
 
             steps {
@@ -168,10 +168,9 @@ pipeline {
 
             post {
                 always {
-                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Production E2E', reportTitles: '', useWrapperFileDirectly: true])
+                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Prod E2E', reportTitles: '', useWrapperFileDirectly: true])
                 }
             }
         }
     }
-}
 }
