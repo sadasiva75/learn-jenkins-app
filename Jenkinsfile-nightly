@@ -3,9 +3,11 @@ pipeline {
 
   stages {
  
-        stage('Build Docker Image')  {
+        stage('Custom Docker Image')  {
            steps {
-              sh 'docker build -t my-playwright .'
+                   sh '''
+                   docker build -t my-playwright .
+                   '''
            }
         }
   }
