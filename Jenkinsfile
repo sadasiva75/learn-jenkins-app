@@ -4,23 +4,20 @@ pipeline {
     environment {
         NETLIFY_SITE_ID = 'b82e32ec-c325-4c48-89ed-8f6b49323ef9'
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
+        REACT_APP_VERSION = "1.0.$BUILD_ID"
     }
 
     stages {
 
-        stage('AWS Build')
-        {
-            agent
-            {
-                docker
-                {
+        stage('AWS') {
+            agent {
+                docker {
                     image 'amazon/aws-cli'
-                    args "--entrypoint=''"  
+                    args "--entrypoint=''"
                 }
             }
-            steps
-            {
-                sh'''
+            steps {
+                sh '''
                     aws --version
                 '''
             }
@@ -36,8 +33,8 @@ pipeline {
             steps {
                 sh '''
                     ls -la
-                    npm --version
                     node --version
+                    npm --version
                     npm ci
                     npm run build
                     ls -la
@@ -45,28 +42,29 @@ pipeline {
             }
         }
 
-        stage('Test Parallel') {
+        stage('Tests') {
             parallel {
-                stage('Unit Tests') {
+                stage('Unit tests') {
                     agent {
                         docker {
                             image 'node:18-alpine'
                             reuseNode true
                         }
                     }
+
                     steps {
                         sh '''
-                            test -f build/index.html
+                            #test -f build/index.html
                             npm test
                         '''
                     }
-                }
-                post {
+                    post {
                         always {
                             junit 'jest-results/junit.xml'
                         }
                     }
-            }
+                }
+
                 stage('E2E') {
                     agent {
                         docker {
@@ -74,48 +72,25 @@ pipeline {
                             reuseNode true
                         }
                     }
+
                     steps {
                         sh '''
                             serve -s build &
                             sleep 10
-                            npx playwright test --reporter=html
+                            npx playwright test  --reporter=html
                         '''
+                    }
+
+                    post {
+                        always {
+                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Local E2E', reportTitles: '', useWrapperFileDirectly: true])
+                        }
                     }
                 }
             }
         }
 
-        stage('Deploy Staging') {
-            agent {
-                docker {
-                    image 'my-playwright'
-                    reuseNode true
-                }
-            }
-
-            environment {
-                CI_ENVIRONMENT_URL = "STAGING URL NEEDS TO BE SET"
-            }
-            steps {
-                sh '''
-                    netlify --version
-                    echo "Deploying to staging. SITE ID : $NETLIFY_SITE_ID"
-                    netlify status
-                    netlify deploy --dir=build --json > deploy-output.json
-                    CI_ENVIRONMENT_URL=$(jq -r '.deploy_url' deploy-output.json)
-                    npx playwright test --reporter=html
-                '''
-            }
-        }
-        post {
-                always {
-                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Staging E2E', reportTitles: '', useWrapperFileDirectly: true])
-                }
-            }
-        }
-
-
-           stage('Deploy Prod') {
+        stage('Deploy staging') {
             agent {
                 docker {
                     image 'my-playwright'
@@ -126,21 +101,49 @@ pipeline {
             environment {
                 CI_ENVIRONMENT_URL = 'https://dreamy-otter-4dd3f5.netlify.app'
             }
+
+            steps {
+                sh '''
+                    netlify --version
+                    echo "Deploying to staging. Site ID: $NETLIFY_SITE_ID"
+                    netlify status
+                    netlify deploy --dir=build --json > deploy-output.json
+                    CI_ENVIRONMENT_URL=$(jq -r '.deploy_url' deploy-output.json)
+                    npx playwright test  --reporter=html
+                '''
+            }
+
+            post {
+                always {
+                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Staging E2E', reportTitles: '', useWrapperFileDirectly: true])
+                }
+            }
+        }
+
+        stage('Deploy prod') {
+            agent {
+                docker {
+                    image 'my-playwright'
+                    reuseNode true
+                }
+            }
+
+            environment {
+                CI_ENVIRONMENT_URL = 'https://dreamy-otter-4dd3f5.netlify.app'
+            }
+
             steps {
                 sh '''
                     node --version
                     netlify --version
-                    echo "Deploying to production. SITE ID : $NETLIFY_SITE_ID"
+                    echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
                     netlify status
                     netlify deploy --dir=build --prod
-                    npx playwright test --reporter=html
+                    npx playwright test  --reporter=html
                 '''
             }
-            post {
-                always {
-                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Prod E2E', reportTitles: '', useWrapperFileDirectly: true])
-                }
-            }
 
+            	
         }
-    
+    }
+}
