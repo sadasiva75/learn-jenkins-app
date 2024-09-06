@@ -35,7 +35,6 @@ pipeline {
             }
             steps {
                 sh '''
-                    echo "Small Change"
                     ls -la
                     npm --version
                     node --version
@@ -48,7 +47,7 @@ pipeline {
 
         stage('Test Parallel') {
             parallel {
-                stage('Test') {
+                stage('Unit Tests') {
                     agent {
                         docker {
                             image 'node:18-alpine'
@@ -62,6 +61,12 @@ pipeline {
                         '''
                     }
                 }
+                post {
+                        always {
+                            junit 'jest-results/junit.xml'
+                        }
+                    }
+            }
                 stage('E2E') {
                     agent {
                         docker {
@@ -73,7 +78,7 @@ pipeline {
                         sh '''
                             serve -s build &
                             sleep 10
-                            npx playwright test
+                            npx playwright test --reporter=html
                         '''
                     }
                 }
@@ -97,21 +102,20 @@ pipeline {
                     echo "Deploying to staging. SITE ID : $NETLIFY_SITE_ID"
                     netlify status
                     netlify deploy --dir=build --json > deploy-output.json
-                    CI_ENVIRONMENT_URL=$(node-jq -r '.deploy_url' deploy-output.json)
-                    npx playwright test
+                    CI_ENVIRONMENT_URL=$(jq -r '.deploy_url' deploy-output.json)
+                    npx playwright test --reporter=html
                 '''
             }
         }
-
-        stage('Approval') {
-            steps {
-                timeout(time: 15, unit: 'MINUTES') {
-                    input message: 'Do you wish to deploy to production', ok: 'Yes, I am sure!'
+        post {
+                always {
+                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Staging E2E', reportTitles: '', useWrapperFileDirectly: true])
                 }
             }
         }
 
-        stage('Deploy Prod') {
+
+           stage('Deploy Prod') {
             agent {
                 docker {
                     image 'my-playwright'
@@ -129,9 +133,15 @@ pipeline {
                     echo "Deploying to production. SITE ID : $NETLIFY_SITE_ID"
                     netlify status
                     netlify deploy --dir=build --prod
-                    npx playwright test
+                    npx playwright test --reporter=html
                 '''
             }
+            post {
+                always {
+                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Prod E2E', reportTitles: '', useWrapperFileDirectly: true])
+                }
+            }
+
         }
     }
 }
