@@ -8,7 +8,7 @@ pipeline {
 
     stages {
 
-        stage('AWS Build')
+        stage('AWS')
         {
             agent
             {
