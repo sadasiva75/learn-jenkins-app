@@ -22,7 +22,7 @@ pipeline {
             {
                
                     sh'''
-                    aws --version
+                       aws --version
                     '''
                 }
             }
@@ -137,3 +137,4 @@ pipeline {
             }
         }
     }
+}
