@@ -8,7 +8,7 @@ pipeline {
 
     stages {
 
-        stage('AWS')
+        stage('AWS Build')
         {
             agent
             {
@@ -20,9 +20,11 @@ pipeline {
             }
             steps
             {
-               
+                /*withCredentials([usernamePassword(credentialsId: 'my-aws', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) */
+                {
                     sh'''
-                       aws --version
+                    aws --version
+                    aws s3 ls
                     '''
                 }
             }
@@ -122,8 +124,7 @@ pipeline {
             }
 
             environment {
-                CI_ENVIRONMENT_URL = 'https://dreamy-otter-4dd3f5.netlify.app'
-
+                CI_ENVIRONMENT_URL = 'https://poetic-kelpie-9fd244.netlify.app'
             }
             steps {
                 sh '''
@@ -137,3 +138,4 @@ pipeline {
             }
         }
     }
+}
