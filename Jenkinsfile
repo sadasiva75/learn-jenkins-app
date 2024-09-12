@@ -6,7 +6,6 @@ pipeline {
     }
 
     stages {
-
    
      stage('Deploy to AWS') {
             agent {
@@ -28,7 +27,7 @@ pipeline {
             }
         }
     }
-        stage('Build') {
+       stage('Build') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -46,5 +45,7 @@ pipeline {
                 '''
             }
         }
+    }
 }
- }
+
+ 
