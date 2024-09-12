@@ -3,11 +3,12 @@ pipeline {
 
     environment {
         REACT_APP_VERSION = "1.0.$BUILD_ID"
+        AWS_DEFAULT_REGION = 'us-east-1'
     }
 
     stages {
-   
-     stage('Deploy to AWS') {
+
+        stage('Deploy to AWS') {
             agent {
                 docker {
                     image 'amazon/aws-cli'
@@ -15,7 +16,7 @@ pipeline {
                     args "--entrypoint=''"
                 }
             }
-            
+
             steps {
                 withCredentials([usernamePassword(credentialsId: 'my-aws', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
                     sh '''
@@ -23,11 +24,10 @@ pipeline {
                         aws ecs register-task-definition --cli-input-json file://aws/task-definition.json
                     '''
                 }
-             
             }
         }
-    }
-       stage('Build') {
+
+        stage('Build') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -46,6 +46,4 @@ pipeline {
             }
         }
     }
-
-
- 
+}
